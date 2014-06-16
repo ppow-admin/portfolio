@@ -1,0 +1,115 @@
+GIT STASH INSTALLATION NOTES
+
+Notes culled together when I was installing and setting up an instance of Git Stash...
+
+
+
+
+Download from : https://www.atlassian.com/software/stash/download
+
+Do:
+java -version
+The version of Java should be 1.6.0 or higher.
+
+git --version
+The version of Git should be 1.7.6 or higher. 
+
+==============================================
+       ****updated to make both servers match*****
+==============================================
+[root@vgit01.atlc1 ~]# git --version
+git version 1.8.4.1
+
+[root@vgit02.atlc1 bin]# git --version
+git version 1.8.4.1
+
+https://code.google.com/p/git-core/downloads/list
+
+tar -zxf git-1.8.4.1.tar.gz
+cd git-1.8.4.1
+yum install perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
+make prefix=/usr all
+sudo make prefix=/usr install
+==============================================
+
+perl --version
+The version of Perl should be 5.8.8 or higher.
+
+Untar the Stash-x.x.x.tar file downloaded from Atlassian to /var/Stash-x.x.x.tar
+
+Create the "stash_home" dir OUTSIDE of the installavtion dir  Ex. /var/stashhome
+
+Edit the setenv.sh file inside /var/Stash-x.x.x/bin and point the STASH_HOME directive to /var/stashhome or whereever you decided to put stashhome in the previous step.
+
+You should not locate your Stash home directory inside the  <Stash installation directory> — they should be entirely separate locations. If you do put the home directory in the  <Stash installation directory>  it will be overwritten, and lost, when Stash gets upgraded. And by the way, you'll need separate Stash home directories if you want to run multiple instances of Stash.
+
+From here you can start Stash by running /var/Stash-x.x.x/bin/start-stash.sh
+
+In your browser, go to http://vgit01.atlc1:7990 and run through the Setup Wizard.
+
+==============================================
+SETUP WIZARD
+==============================================
+
+If you use a external database such as Oracle you will need to do the following with the DBAs:
+
+Request a database to be created...
+
+The character set of the database must be set to either AL32UTF8 or UTF8, to support storage of Unicode data as per the Oracle documentation.
+Note that it is important to the proper operation of Stash that the database store its data in a case-sensitive manner. By changing the values of the NLS_COMP and/or NLS_SORT variables, it is possible to cause Oracle to perform its searches in a case-insensitive manner. We therefore strongly recommend that those variables be left at their default values.
+Create a user that Stash will connect as (e.g.  stash ). 
+Remember the database user name; it will be used to configure Stash's connection to the database in subsequent steps.
+
+It is strongly recommended that you create a new database user for use by Stash rather than sharing one that is used by other applications or people.
+Grant the Stash user connect and resource roles only. The connect role is required to set up a connection, while resource role is required to allow the user to create objects in its own schema.
+Create a local all_objects view to the user's schema, so that there is no possibility that a table with the same name as one of the Stash tables in another schema will cause any conflicts.
+
+The format of the command to create a user in Oracle is:
+
+CREATE USER <user> 
+    IDENTIFIED BY <password>;
+GRANT CONNECT, RESOURCE to <user>;
+CREATE VIEW <user>.all_objects AS
+  SELECT *
+  FROM sys.all_objects
+  WHERE owner = upper('<user>');
+
+
+
+==============================================
+SUBGIT
+==============================================
+
+Add to this file: /var/subgit-2.0.0/bin/subgit
+
+EXTRA_JVM_ARGUMENTS="-Dsun.io.useCanonCaches=false -Djava.awt.headless=true -Xmx1024M" $EXTRA_JVM_ARGUMENTS \
+
+
+==============================================
+RESTORE PROCESS  (This will need to be automated much more with scripts)
+==============================================
+Tar up the installation folder on server1
+
+Move the tar file to server 2 to /var
+
+Explode the tar file
+
+
+Run the backup client located on Server1 at /var/stash-backup-client-1.0.0/
+
+DO: 
+java -jar stash-backup-client.jar
+cd /var/stashbkup/backups/
+scp stash-xxxxxxx-xxxxxx-xxx.tar root@vgit02.atlc1:/var/stash-backup-client-1.0.0/stash-xxxxxxx-xxxxxx-xxx.tar
+
+
+
+Make sure that /var/stashhome does NOT exist on Server2. The restore client will create it for you.
+
+You will then need to go to: /var/stash-backup-client-1.0.0
+
+DO: 
+java -cp /var/stash-backup-client-1.0.0/jdbc/ojdbc6-11.2.0.2.0.jar -jar stash-restore-client.jar /var/stashbkup/stash-xxxxxxx-xxxxxx-xxx.tar
+
+
+Once this completes you can startup Stash at /var/stash/bin/start-stash.sh
